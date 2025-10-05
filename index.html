@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rialo — Quiz Tool</title>
+  <style>
+    :root{
+      --bg:#0b0b0d;
+      --card:#161617;
+      --muted:#8a8a8f;
+      --accent:#9aa6b2;
+      --correct:#4cd964;
+      --wrong:#ff6b6b;
+      --glass: rgba(255,255,255,0.03);
+      --shadow: 0 6px 18px rgba(2,2,6,0.6);
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; background:linear-gradient(180deg,var(--bg) 0%, #0f0f11 100%); color:#e6e7e9; display:flex; align-items:center; justify-content:center; padding:32px;
+    }
+    .app{
+      width:min(920px,96%); background:linear-gradient(180deg,var(--card), rgba(22,22,23,0.92)); border-radius:12px; padding:18px; box-shadow:var(--shadow);
+    }
+    header{display:flex; align-items:center; gap:12px;}
+    .logo{width:56px; height:56px; border-radius:10px; background:linear-gradient(135deg,#222427,#111214); display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--accent); font-size:20px; box-shadow: inset 0 -2px 0 rgba(255,255,255,0.02);}
+    h1{margin:0; font-size:20px; letter-spacing:0.4px}
+    p.lead{margin:6px 0 16px; color:var(--muted); font-size:13px}
+
+    .card{background:var(--glass); border-radius:10px; padding:18px;}
+    .progress{height:8px; background:#0d0d0e; border-radius:6px; overflow:hidden; margin-bottom:12px}
+    .progress > i{display:block; height:100%; background:linear-gradient(90deg,#2d7a88,#5aa0b8); width:0%}
+
+    .qnum{color:var(--muted); font-size:13px}
+    .question{font-size:18px; margin:10px 0 14px}
+    .options{display:grid; gap:10px}
+    .option{background:#0f1011; border:1px solid rgba(255,255,255,0.03); padding:12px; border-radius:8px; cursor:pointer; display:flex; gap:12px; align-items:center}
+    .option input{display:none}
+    .option.selected{outline:2px solid rgba(90,160,184,0.12); background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+
+    .controls{display:flex; justify-content:space-between; align-items:center; margin-top:16px}
+    .btn{background:transparent; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:8px; color:var(--accent); cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,#2d7a88,#5aa0b8); color:#061018; border:none}
+
+    .result{margin-top:16px; padding:12px; border-radius:8px; background:rgba(255,255,255,0.02); color:var(--muted)}
+    .answer-list{margin-top:12px; font-size:13px}
+    .answer-item{padding:8px; border-radius:8px; margin-bottom:8px; background:#0d0d0e}
+    .correct{color:var(--correct); font-weight:600}
+    .wrong{color:var(--wrong); font-weight:600}
+
+    footer{margin-top:14px; color:var(--muted); font-size:12px; display:flex; justify-content:space-between}
+    @media (max-width:560px){ .question{font-size:16px} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">R</div>
+      <div>
+        <h1>Rialo — Quiz Tool</h1>
+        <p class="lead">10-question multiple choice quiz on the "Making the Agent Economy Simple and Safe with Rialo" article. Black & gray theme.</p>
+      </div>
+    </header>
+
+    <div style="height:10px"></div>
+
+    <div class="card" id="quizCard">
+      <div class="progress" aria-hidden><i id="progressBar"></i></div>
+      <div class="qnum" id="qnum">Question 1 of 10</div>
+      <div class="question" id="question">Loading…</div>
+      <div class="options" id="options"></div>
+
+      <div class="controls">
+        <div>
+          <button class="btn" id="prevBtn">← Prev</button>
+          <button class="btn" id="nextBtn">Next →</button>
+        </div>
+        <div>
+          <button class="btn" id="resetBtn">Reset</button>
+          <button class="btn primary" id="submitBtn">Submit</button>
+        </div>
+      </div>
+
+      <div id="resultArea"></div>
+    </div>
+
+    <footer>
+      <div>Project: <strong>Rialo</strong></div>
+      <div>&copy; Rialo Quiz</div>
+    </footer>
+  </div>
+
+  <script>
+    const questions = [
+      { q: "What is the primary vision behind Rialo?", opts:[
+        "To centralize AI agents under one vendor",
+        "To build the blockchain for the agent economy and support decentralized AI agent systems",
+        "To replace traditional blockchains with a proprietary system",
+        "To focus solely on NFT marketplaces"
+      ], a:1 },
+
+      { q: "What is SCALE in the context of Rialo?", opts:[
+        "A data storage protocol",
+        "A consensus algorithm",
+        "Simple Contracts for Agent Labor Execution",
+        "A new token standard"
+      ], a:2 },
+
+      { q: "Which mechanisms does Rialo use to enforce deadlines and quality assurance in SCALE contracts?", opts:[
+        "Off-chain arbitration only",
+        "Native timers, on-chain escrows, and native webcalls",
+        "Central moderator approval",
+        "Manual human oversight"
+      ], a:1 },
+
+      { q: "In the demo described (with @chunliweb3), what role does the judge agent play?", opts:[
+        "It generates the image",
+        "It posts the image to Twitter",
+        "It evaluates whether the delivered work meets the quality bar",
+        "It refunds funds regardless of quality"
+      ], a:2 },
+
+      { q: "What happens if the Image Generating Agent fails to deliver the work by the deadline?", opts:[
+        "The task is extended indefinitely",
+        "Rialo automatically refunds the requester from the escrow",
+        "The agent is blacklisted without refund",
+        "The judge agent intervenes"
+      ], a:1 },
+
+      { q: "How are payment amounts handled when a SCALE task is created?", opts:[
+        "Paid immediately to the agent",
+        "Held off-chain until completion",
+        "Escrowed on-chain at the time of task creation",
+        "Paid after judge approval via off-chain channels"
+      ], a:2 },
+
+      { q: "Which communication protocol is mentioned as being supported between agents on Rialo?", opts:[
+        "HTTP/2 only",
+        "Agent2Agent (A2A)",
+        "SMTP",
+        "FTP"
+      ], a:1 },
+
+      { q: "What is one of the risks SCALE tries to mitigate, even when dealing with human contractors?", opts:[
+        "Excessive payment",
+        "Tasks never being defined",
+        "Late delivery and subpar quality",
+        "Overuse of storage"
+      ], a:2 },
+
+      { q: "What is the first public demo use case mentioned in the article?", opts:[
+        "Text generation by AI agents",
+        "Financial trading bots",
+        "Image generation via a Twitter agent",
+        "Supply chain tracking"
+      ], a:2 },
+
+      { q: "According to the article, what future possibilities does Subzero Labs imagine building with Rialo + AI?", opts:[
+        "Centralized AI monopolies",
+        "Passive web3 income via judge agents, custom AI workflows, and easier Web3 participation",
+        "Traditional app stores",
+        "Removing all agent‑based systems"
+      ], a:1 }
+    ];
+
+    let state = { idx:0, answers: Array(questions.length).fill(null) };
+
+    const el = {
+      qnum:document.getElementById('qnum'),
+      question:document.getElementById('question'),
+      options:document.getElementById('options'),
+      prevBtn:document.getElementById('prevBtn'),
+      nextBtn:document.getElementById('nextBtn'),
+      submitBtn:document.getElementById('submitBtn'),
+      resetBtn:document.getElementById('resetBtn'),
+      progressBar:document.getElementById('progressBar'),
+      resultArea:document.getElementById('resultArea')
+    };
+
+    function render(){
+      const q = questions[state.idx];
+      el.qnum.textContent = `Question ${state.idx+1} of ${questions.length}`;
+      el.question.textContent = q.q;
+      el.options.innerHTML = '';
+
+      q.opts.forEach((opt,i)=>{
+        const btn = document.createElement('label');
+        btn.className = 'option'+(state.answers[state.idx]===i? ' selected':'');
+        btn.innerHTML = `\n          <input type="radio" name="opt" value="${i}">\n          <div style=\"flex:1\">${String.fromCharCode(65+i)}. ${opt}</div>`;
+        btn.addEventListener('click', ()=>{
+          state.answers[state.idx]=i;
+          render();
+        });
+        el.options.appendChild(btn);
+      });
+
+      const pct = Math.round(((state.idx)/ (questions.length-1))*100);
+      el.progressBar.style.width = pct + '%';
+
+      el.prevBtn.disabled = state.idx===0;
+      el.nextBtn.disabled = state.idx===questions.length-1;
+
+      el.resultArea.innerHTML = '';
+    }
+
+    el.prevBtn.addEventListener('click', ()=>{ state.idx = Math.max(0,state.idx-1); render(); });
+    el.nextBtn.addEventListener('click', ()=>{ state.idx = Math.min(questions.length-1,state.idx+1); render(); });
+
+    el.resetBtn.addEventListener('click', ()=>{
+      if(!confirm('Reset your answers?')) return;
+      state.answers = Array(questions.length).fill(null);
+      state.idx = 0; render();
+    });
+
+    el.submitBtn.addEventListener('click', ()=>{
+      if(state.answers.every(a=>a===null)){
+        if(!confirm('You haven\'t answered anything. Submit anyway?')) return;
+      }
+      const score = state.answers.reduce((s,ans,i)=> s + (ans===questions[i].a ? 1:0), 0);
+      const pct = Math.round((score/questions.length)*100);
+
+      const res = document.createElement('div'); res.className='result';
+      res.innerHTML = `<div style="font-weight:700; font-size:16px">Results — ${score} / ${questions.length} (${pct}%)</div>`;
+
+      const list = document.createElement('div'); list.className='answer-list';
+      questions.forEach((qq, i)=>{
+        const item = document.createElement('div'); item.className='answer-item';
+        const chosen = state.answers[i];
+        const correct = qq.a;
+        const ok = chosen === correct;
+        item.innerHTML = `Q${i+1}: ${qq.q}<br><div style=\"margin-top:6px\">Your answer: ${chosen===null? '<em>None</em>' : String.fromCharCode(65+chosen)+'. '+qq.opts[chosen]}${ok? ' <span class=\"correct\">(Correct)</span>' : ' <span class=\"wrong\">(Wrong)</span>'}</div><div style=\"margin-top:6px;color:var(--muted)\">Correct: ${String.fromCharCode(65+correct)}. ${qq.opts[correct]}</div>`;
+        list.appendChild(item);
+      });
+
+      res.appendChild(list);
+      el.resultArea.innerHTML='';
+      el.resultArea.appendChild(res);
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+
+    // initial render
+    render();
+  </script>
+</body>
+</html>
